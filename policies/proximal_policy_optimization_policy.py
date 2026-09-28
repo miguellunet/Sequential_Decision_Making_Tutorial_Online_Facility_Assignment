@@ -1,0 +1,45 @@
+import numpy as np
+import torch
+from pathlib import Path
+
+from policies.base_policy import BasePolicy
+
+TRAIN_DIR = Path(__file__).resolve().parent.parent / "training"
+
+class ProximalPolicyOptimizationPolicy(BasePolicy):
+  
+    def __init__(self, env, num_warehouses, num_customers, capacity_distribution):
+
+        # Load the trained PPO model
+        super().__init__(env)
+        from sb3_contrib import MaskablePPO
+        self.model = MaskablePPO.load(
+            TRAIN_DIR / "proximal_policy_optimization_training" / "rl_models" / "ppo_models" / f"ppo_model_w_{num_warehouses}_c_{num_customers}_d_{capacity_distribution}"
+        )
+
+        # Warm-up call before timing starts
+        warmup_size = 1
+        dummy_obs = np.zeros(2 * num_warehouses, dtype=np.float32)
+        dummy_mask = np.ones(num_warehouses, dtype=bool)
+        for _ in range(warmup_size):
+            self.model.predict(dummy_obs, action_masks=dummy_mask, deterministic=True)
+
+    def _rl_get_state(self, state):
+
+        # Flatten the state for the RL model
+        # Distance is normalized by the maximum distance (212.13), and capacity is normalized by the initial capacity
+        
+        data_rows = []
+        for i in range(state['static_info']['num_warehouses']):
+            data_rows.append(state['warehouses_distance'][i] / 212.13)
+            data_rows.append(state['warehouses_capacity'][i] / state['static_info']['warehouses_initial_capacity'][i])
+
+        return np.array(np.nan_to_num(data_rows, nan=0), dtype=np.float32)
+
+    def reset(self, instance):
+        self.env.get_state = self._rl_get_state
+
+    def act(self, state):
+        action_masks = np.array([capacity > 0 for capacity in self.env.warehouses_capacity])
+        action, _ = self.model.predict(state, action_masks=action_masks, deterministic=True)
+        return int(action)

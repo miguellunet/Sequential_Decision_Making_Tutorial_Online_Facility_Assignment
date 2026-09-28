@@ -1,0 +1,27 @@
+/.claude
+/.venv
+
+# macOS
+**/.DS_Store
+
+# Python cache
+**/__pycache__/
+
+#Keep all training files, except exact_value_function (too large)
+training/exact_value_function_training/**
+!training/exact_value_function_training/**/.gitkeep
+
+#Only keep the subfolders with git.keep and store none files in the subfolders
+results/tables_extra_check_il
+results/tables_extra_check_lph
+results/full_tables_extra_check_il
+results/full_tables_extra_check_lph
+
+# Only keep the subfolders with git.keep and store none files in the subfolders
+instances/**
+!instances/**/
+!instances/**/.gitkeep
+
+#export
+delete_policies_from_results.py
+export_results_extra.py
